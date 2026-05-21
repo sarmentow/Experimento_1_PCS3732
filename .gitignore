@@ -1,2 +1,6 @@
 *.d
 *.o
+*.pdf
+*.jpeg
+*.jpg
+*png
