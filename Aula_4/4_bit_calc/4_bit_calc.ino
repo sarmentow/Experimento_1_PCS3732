@@ -320,10 +320,17 @@ int8_t handle_multiplication(int8_t A, int8_t B, bool* overflow){
     B = ((B ^ 0x0F) +1) & 0x0F;
     A = ((A ^ 0x0F) +1) & 0x0F;
   }
+  
+  uint32_t start_time = micros();
   for(int i = 0; i < B; ++i){
     result = handle_addition(result, A, overflow);
     if(*overflow) break;
   }
+
+  uint32_t end_time = micros();
+  uint32_t elapsed_time = end_time - start_time;
+  Serial.printf("Multiplication Time: %u microseconds\n", elapsed_time);
+
   return result;
 }
 
@@ -334,10 +341,14 @@ int8_t handle_factorial(int8_t A, bool* overflow){
     return 0;
   }
   result = 1;
+  uint32_t start_time = micros();
   for(int i = 2; i <= A; ++i){
     result = handle_multiplication(result, i, overflow);
     if(*overflow) break;
   }
+  uint32_t end_time = micros();
+  uint32_t elapsed_time = end_time - strat_time;
+  Serial.printf("Factorial Time: %u microseconds\n", elapsed_time);
   return result;
 }
 
