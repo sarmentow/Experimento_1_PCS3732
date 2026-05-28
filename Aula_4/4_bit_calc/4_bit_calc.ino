@@ -343,11 +343,12 @@ int8_t handle_factorial(int8_t A, bool* overflow){
   result = 1;
   uint32_t start_time = micros();
   for(int i = 2; i <= A; ++i){
-    result = handle_multiplication(result, i, overflow);
-    if(*overflow) break;
+    // result = handle_multiplication(result, i, overflow);
+    result *= i;
+    // if(*overflow) break;
   }
   uint32_t end_time = micros();
-  uint32_t elapsed_time = end_time - strat_time;
+  uint32_t elapsed_time = end_time - start_time;
   Serial.printf("Factorial Time: %u microseconds\n", elapsed_time);
   return result;
 }
@@ -378,7 +379,7 @@ void loop() {
     while (client.connected()){    
       if(client.available()){     
         char c = client.read();
-        Serial.write(c);    
+        // Serial.write(c);    
         if(c == '\n'){            
           if(currentLine.indexOf("GET /calc?") >= 0){
             bool overflow = false;
