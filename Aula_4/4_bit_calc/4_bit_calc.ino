@@ -93,7 +93,6 @@ const char html_page[] PROGMEM = R"rawliteral(
             grid-template-columns: repeat(2, 1fr);
             gap: 10px;
             width: 120px;
-            /* height: 120px; */
             padding-top: 20px;
         }
 
@@ -129,16 +128,16 @@ const char html_page[] PROGMEM = R"rawliteral(
 <div class="calculator">
     <div class="result-field" id="result">0000</div>
 
-    <form method="GET" action="">
+    <form method="GET" action="/calc">
         <div class="main-interface">
             <div class="inputs-column">
                 <div>
                     <div class="label">Binary Num 1</div>
-                    <input type="text" name="num1" id="num1" pattern="[01]{4}" maxlength="4" placeholder="0000" required title="Must be a 4-bit binary number (e.g., 0101)">
+                    <input type="text" name="a" id="num1" pattern="[01]{4}" maxlength="4" placeholder="0000" required title="Must be a 4-bit binary number (e.g., 0101)">
                 </div>
                 <div>
                     <div class="label">Binary Num 2</div>
-                    <input type="text" name="num2" id="num2" pattern="[01]{4}" maxlength="4" placeholder="0000" title="Must be a 4-bit binary number (e.g., 1110)">
+                    <input type="text" name="b" id="num2" pattern="[01]{4}" maxlength="4" placeholder="0000" title="Must be a 4-bit binary number (e.g., 1110)">
                 </div>
             </div>
 
@@ -146,7 +145,7 @@ const char html_page[] PROGMEM = R"rawliteral(
                 <button type="submit" name="op" value="add" title="Addition">+</button>
                 <button type="submit" name="op" value="sub" title="Subtraction">-</button>
                 <button type="submit" name="op" value="mul" title="Multiplication">*</button>
-                <button type="submit" name="op" value="fact" title="Factorial (Num 1 only)">!</button>
+                <button type="submit" name="op" value="fac" title="Factorial (Num 1 only)">!</button>
             </div>
         </div>
     </form>
@@ -154,53 +153,46 @@ const char html_page[] PROGMEM = R"rawliteral(
 
 <script>
     window.addEventListener('DOMContentLoaded', () => {
-        // Parse GET parameters from URL
         const urlParams = new URLSearchParams(window.location.search);
-        const num1Str = urlParams.get('num1');
-        const num2Str = urlParams.get('num2');
+        const num1Str = urlParams.get('a'); 
+        const num2Str = urlParams.get('b');
         const op = urlParams.get('op');
 
         const resultDisplay = document.getElementById('result');
 
-        // Helper: Convert 4-bit signed binary (Two's Complement) to Decimal
         function binToSignedInt(bin) {
             let val = parseInt(bin, 2);
-            if (bin[0] === '1') { // If MSB is 1, it's negative
+            if (bin[0] === '1') { 
                 val -= 16;
             }
             return val;
         }
 
-        // Helper: Convert Decimal back to 4-bit signed binary
         function signedIntToBin(val) {
             if (val < -8 || val > 7) return "OVERFLOW";
             if (val < 0) {
-                val = 16 + val; // Convert negative to its two's complement unsigned representation
+                val = 16 + val;
             }
             return val.toString(2).padStart(4, '0');
         }
 
-        // If the form was submitted via GET
         if (num1Str !== null && op !== null) {
-            // Repopulate fields for seamless UX
             document.getElementById('num1').value = num1Str;
             if (num2Str) document.getElementById('num2').value = num2Str;
 
-            // Simple validation regex
             const binRegex = /^[01]{4}$/;
-            if (!binRegex.test(num1Str) || (op !== 'fact' && !binRegex.test(num2Str))) {
+            if (!binRegex.test(num1Str) || (op !== 'fac' && num2Str && !binRegex.test(num2Str))) {
                 resultDisplay.innerText = "ERROR";
                 resultDisplay.classList.add('overflow');
                 return;
             }
 
             const n1 = binToSignedInt(num1Str);
-            const n2 = num2Str ? binToSignedInt(num2Str) : 0;
+            const n2 = (num2Str && num2Str !== "") ? binToSignedInt(num2Str) : 0;
             
             let decimalResult = 0;
             let isOverflow = false;
 
-            // Perform chosen operation
             switch(op) {
                 case 'add':
                     decimalResult = n1 + n2;
@@ -211,10 +203,7 @@ const char html_page[] PROGMEM = R"rawliteral(
                 case 'mul':
                     decimalResult = n1 * n2;
                     break;
-                case 'fact':
-                    // Factorial is only defined for non-negative integers.
-                    // Max value 4-bit signed can store without overflow is 7.
-                    // 0! = 1, 1! = 1, 2! = 2, 3! = 6. 4! = 24 (Overflows!)
+                case 'fac': // FIXED: Matched name 'fac'
                     if (n1 < 0 || n1 > 3) {
                         isOverflow = true;
                     } else {
@@ -228,7 +217,6 @@ const char html_page[] PROGMEM = R"rawliteral(
                     return;
             }
 
-            // Determine final output string
             let finalOutput = "";
             if (isOverflow) {
                 finalOutput = "OVERFLOW";
@@ -236,7 +224,6 @@ const char html_page[] PROGMEM = R"rawliteral(
                 finalOutput = signedIntToBin(decimalResult);
             }
 
-            // Display results
             resultDisplay.innerText = finalOutput;
             if (finalOutput === "OVERFLOW") {
                 resultDisplay.classList.add('overflow');
@@ -260,10 +247,10 @@ void setup() {
   Serial.println();
   Serial.println("Configuring access point...");
 
-  pinMode(18, OUTPUT);
-  pinMode(19, OUTPUT);
-  pinMode(22, OUTPUT);
-  pinMode(23, OUTPUT);
+  pinMode(4, OUTPUT);
+  pinMode(5, OUTPUT);
+  pinMode(6, OUTPUT);
+  pinMode(7, OUTPUT);
 
   if (!WiFi.softAP(ssid, password)) {
     log_e("Soft AP creation failed.");
@@ -284,15 +271,14 @@ void send_html_page(NetworkClient client){
   client.println();
 
   client.print(html_page);
-
   client.println();
 }
 
 void set_leds(int8_t value){
-  digitalWrite(18, value & 0x08);
-  digitalWrite(19, value & 0x04);
-  digitalWrite(22, value & 0x02);
-  digitalWrite(23, value & 0x01);
+  digitalWrite(4, value & 0x08);
+  digitalWrite(5, value & 0x04);
+  digitalWrite(6, value & 0x02);
+  digitalWrite(7, value & 0x01);
 }
 
 void get_operation_params(const String& request, String* op, int8_t* A, int8_t* B){
@@ -300,13 +286,11 @@ void get_operation_params(const String& request, String* op, int8_t* A, int8_t* 
   int indexB  = request.indexOf("&b=");
   int indexOp = request.indexOf("&op=");
   
-  int indexEnd = request.indexOf(" ", indexOp); 
-
+  int indexEnd = request.indexOf(" ", indexOp);
   if (indexA != -1 && indexB != -1 && indexOp != -1) {
     String strA  = request.substring(indexA + 2, indexB);
     String strB  = request.substring(indexB + 3, indexOp);
     String strOp = request.substring(indexOp + 4, indexEnd != -1 ? indexEnd : request.length());
-
     strOp.trim();
 
     *A = strtol(strA.c_str(), NULL, 2);
@@ -331,7 +315,7 @@ int8_t handle_addition(int8_t A, int8_t B, bool* overflow){
 }
 
 int8_t handle_multiplication(int8_t A, int8_t B, bool* overflow){
-  int8_t result = 0;     
+  int8_t result = 0;
   if (B & 0x08){
     B = ((B ^ 0x0F) +1) & 0x0F;
     A = ((A ^ 0x0F) +1) & 0x0F;
@@ -345,7 +329,7 @@ int8_t handle_multiplication(int8_t A, int8_t B, bool* overflow){
 
 int8_t handle_factorial(int8_t A, bool* overflow){
   int8_t result = 0;
-  if((A & 0x08 == 0x08) || (A == 0)){
+  if(((A & 0x08) == 0x08) || (A == 0)){
     *overflow = false;
     return 0;
   }
@@ -380,28 +364,27 @@ void loop() {
   if(client){
     Serial.println("New Client.");
     String currentLine = "";
-
     while (client.connected()){    
       if(client.available()){     
         char c = client.read();
         Serial.write(c);    
         if(c == '\n'){            
           if(currentLine.indexOf("GET /calc?") >= 0){
-            bool overflow = false;  
+            bool overflow = false;
             int8_t A, B, result;
             String op;
             
             get_operation_params(currentLine, &op, &A, &B);
             print_operation_params(op, A, B);
             result = handle_operation(op, A, B, &overflow);
-            
             Serial.print("Resultado: ");
             Serial.println(result, BIN);
             if(overflow){
               Serial.println("Ocorreu Overflow na operacao!");
               set_leds(0x00);
+            } else {
+              set_leds(result);
             }
-            set_leds(result);
             Serial.println("-------------------------------\n");
           }
           if (currentLine.length() == 0) {
