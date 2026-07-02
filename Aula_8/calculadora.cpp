@@ -212,142 +212,137 @@ bool overflow_sub(uint32_t a, uint32_t b, uint32_t result, int bits) {
     return (sign_a != sign_b) && (sign_a != sign_r);
 }
 
-// ============================================================
-// Interface da calculadora
-// ============================================================
+int parse_operation(const string& op) {
+    if (op == "+" || op == "1" || op == "soma") {
+        return 1;
+    }
 
-void print_value(const string& name, uint32_t x, int bits) {
-    cout << name << " = ";
-    print_binary(x, bits);
-    cout << " = " << to_signed(x, bits) << endl;
+    if (op == "-" || op == "2" || op == "sub" || op == "subtracao") {
+        return 2;
+    }
+
+    if (op == "*" || op == "3" || op == "mul" || op == "mult" || op == "multiplicacao") {
+        return 3;
+    }
+
+    if (op == "!" || op == "4" || op == "fat" || op == "fatorial") {
+        return 4;
+    }
+
+    if (op == "/" || op == "5" || op == "div" || op == "divisao") {
+        return 5;
+    }
+
+    return 0;
 }
 
-void run_calculator() {
+void print_result(uint32_t x, int bits) {
+    cout << to_signed(x, bits) << '\n';
+}
+
+int main(int argc, char* argv[]) {
     const int bits = 4;
 
-    cout << "\n========================================\n";
-    cout << "Calculadora binaria bit a bit - 4 bits\n";
-    cout << "Representacao: complemento de 2\n";
-    cout << "Faixa: -8 ate 7\n";
-    cout << "========================================\n\n";
+    auto usage = [&](int code) {
+        cerr << "Uso: " << argv[0] << " <op> <a> [b]\n";
+        cerr << "Exemplos:\n";
+        cerr << "  " << argv[0] << " + 0010 0011\n";
+        cerr << "  " << argv[0] << " ! 0101\n";
+        cerr << "Ou passando por stdin:\n";
+        cerr << "  echo '+ 0010 0011' | " << argv[0] << "\n";
+        return 1;
+    };
 
-    cout << "Operacoes:\n";
-    cout << "1 - Soma\n";
-    cout << "2 - Subtracao\n";
-    cout << "3 - Multiplicacao por somas sucessivas\n";
-    cout << "4 - Fatorial\n";
-    cout << "5 - Divisao inteira\n";
-    cout << "0 - Sair\n\n";
-
-    cout << "Escolha: ";
-
-    int op;
-    cin >> op;
-
-    if (op == 0) {
-        return;
-    }
-
+    string op_text;
     string sa;
     string sb;
-
     uint32_t a;
-    uint32_t b = 0;
-    uint32_t result;
 
-    cout << "Digite A em binario com ate 4 bits: ";
-    cin >> sa;
+    if (argc == 1) {
+        if (!(cin >> op_text >> sa)) {
+            return usage(1);
+        }
 
-    a = parse_binary(sa, bits);
+        int op = parse_operation(op_text);
+        if (op == 0) {
+            cerr << "Erro: operacao invalida: " << op_text << '\n';
+            return 1;
+        }
 
-    if (op != 4) {
-        cout << "Digite B em binario com ate 4 bits: ";
-        cin >> sb;
-
-        b = parse_binary(sb, bits);
+        if (op != 4 && !(cin >> sb)) {
+            cerr << "Erro: essa operacao precisa de dois operandos.\n";
+            return 1;
+        }
+    } else if (argc >= 3) {
+        op_text = argv[1];
+        sa = argv[2];
+        if (argc >= 4) {
+            sb = argv[3];
+        }
+    } else {
+        return usage(1);
     }
 
-    cout << "\nEntradas interpretadas em complemento de 2:\n";
-    print_value("A", a, bits);
+    try {
+        int op = parse_operation(op_text);
+        if (op == 0) {
+            cerr << "Erro: operacao invalida: " << op_text << '\n';
+            return 1;
+        }
 
-    if (op != 4) {
-        print_value("B", b, bits);
-    }
+        a = parse_binary(sa, bits);
+        uint32_t b = 0;
+        uint32_t result;
 
-    cout << "\nResultado:\n";
+        if (op != 4) {
+            if (argc >= 3 && argc < 4) {
+                cerr << "Erro: essa operacao precisa de dois operandos.\n";
+                return 1;
+            }
 
-    switch (op) {
-        case 1:
+            if (sb.empty()) {
+                cerr << "Erro: essa operacao precisa de dois operandos.\n";
+                return 1;
+            }
+            b = parse_binary(sb, bits);
+        }
+
+        if (op == 1) {
             result = add_bits(a, b, bits);
-            print_value("A + B", result, bits);
-
             if (overflow_add(a, b, result, bits)) {
-                cout << "Aviso: ocorreu overflow na soma em 4 bits.\n";
+                cerr << "Aviso: ocorreu overflow na soma em 4 bits.\n";
             }
-
-            break;
-
-        case 2:
+            print_result(result, bits);
+        } else if (op == 2) {
             result = sub_bits(a, b, bits);
-            print_value("A - B", result, bits);
-
             if (overflow_sub(a, b, result, bits)) {
-                cout << "Aviso: ocorreu overflow na subtracao em 4 bits.\n";
+                cerr << "Aviso: ocorreu overflow na subtracao em 4 bits.\n";
             }
-
-            break;
-
-        case 3:
+            print_result(result, bits);
+        } else if (op == 3) {
             result = mul_bits(a, b, bits);
-            print_value("A * B", result, bits);
-            cout << "Observacao: a multiplicacao foi feita por loop de somas sucessivas.\n";
-            cout << "Aviso: se o resultado matematico nao couber em 4 bits, o valor exibido fica truncado.\n";
-            break;
-
-        case 4:
+            print_result(result, bits);
+        } else if (op == 4) {
             if (factorial_bits(a, bits, &result)) {
-                print_value("A!", result, bits);
-                cout << "Aviso: se o resultado matematico nao couber em 4 bits, o valor exibido fica truncado.\n";
+                print_result(result, bits);
             } else {
-                cout << "Erro: fatorial nao e definido para numero negativo.\n";
+                cerr << "Erro: fatorial nao e definido para numero negativo.\n";
+                return 1;
             }
-
-            break;
-
-        case 5: {
+        } else if (op == 5) {
             uint32_t q;
             uint32_t r;
 
             if (!div_bits(a, b, bits, &q, &r)) {
-                cout << "Erro: divisao por zero.\n";
-                cout << "Tratamento: a operacao e recusada antes do calculo.\n";
-            } else {
-                print_value("Quociente", q, bits);
-                print_value("Resto", r, bits);
+                cerr << "Erro: divisao por zero.\n";
+                return 1;
             }
 
-            break;
+            cout << to_signed(q, bits) << " " << to_signed(r, bits) << '\n';
         }
-
-        default:
-            cout << "Operacao invalida.\n";
-            break;
-    }
-}
-
-int main() {
-    while (true) {
-        run_calculator();
-
-        cout << "\nDeseja realizar outra operacao? (s/n): ";
-
-        char answer;
-        cin >> answer;
-
-        if (answer != 's' && answer != 'S') {
-            cout << "Encerrando.\n";
-            break;
-        }
+    } catch (const exception& e) {
+        cerr << "Erro: " << e.what() << '\n';
+        return 1;
     }
 
     return 0;
