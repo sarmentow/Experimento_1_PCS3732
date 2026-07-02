@@ -1,6 +1,9 @@
 #include <iostream>
 #include <bitset>
 #include "string"
+#ifdef MEASURE_TIME
+#include <chrono>
+#endif
 
 using namespace std;
 
@@ -70,11 +73,21 @@ int main(){
     for(int8_t a = 0; a < 15; ++a){
       for(int8_t b = 0; b < 15; ++b){
         print_operation_params(op, a, b);
+#ifdef MEASURE_TIME
+        auto start = chrono::high_resolution_clock::now();
+#endif
         result = handle_operation(op, a, b, &overflow);
+#ifdef MEASURE_TIME
+        auto end = chrono::high_resolution_clock::now();
+        auto elapsed_ns = chrono::duration_cast<chrono::nanoseconds>(end - start).count();
+#endif
         cout << "Resultado: "<< bitset<4>(result);
         if(overflow){
           cout << " [Overflow]";
         }
+#ifdef MEASURE_TIME
+        cout << " [Tempo: " << elapsed_ns << " ns]";
+#endif
         cout<<endl;
       } 
     }
