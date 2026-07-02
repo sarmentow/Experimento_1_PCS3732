@@ -10,23 +10,18 @@ if [[ ! -x "$script_dir/a.out" ]]; then
   exit 1
 fi
 
-if [ ! -x /usr/bin/time ]; then
-  echo "Error: /usr/bin/time is required but not found." >&2
-  exit 1
-fi
-
 failures=0
 for i in $(seq 1 100); do
-  if ! (/usr/bin/time -f '%e' "$script_dir/a.out" > /dev/null) 2>> "$tmp"; then
+  if ! (time -p "$script_dir/a.out" > /dev/null) 2>> "$tmp"; then
     ((failures += 1))
   fi
 done
 
 awk '
-  /^[0-9]+(\.[0-9]+)?$/ {
+  /^real[[:space:]]+/ {
     n++
-    sum += $1
-    sumsq += $1 * $1
+    sum += $2
+    sumsq += $2 * $2
   }
   END {
     if (n == 0) {
